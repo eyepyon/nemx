@@ -7,7 +7,7 @@
     "test": "node symbol-helper.js test"
   },
   "dependencies": {
-    "symbol-sdk": "^3.0.7",
+    "symbol-sdk": "^2.0.4",
     "tweetnacl": "^1.0.3",
     "js-sha3": "^0.9.2",
     "ripemd160": "^2.0.2"
