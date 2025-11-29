@@ -5,8 +5,14 @@ require_once __DIR__ . '/vendor/autoload.php';
 use App\SymbolWalletService;
 use App\Database;
 
-// データベース初期化
-$db = new Database();
+// データベース初期化（SQLiteが利用できない場合はスキップ）
+$db = null;
+try {
+    $db = new Database();
+} catch (\Exception $e) {
+    error_log("Database initialization failed: " . $e->getMessage());
+    // データベースなしで続行
+}
 
 // ルーティング
 $request_uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -48,8 +54,10 @@ if ($request_uri === '/wallet/create' && $request_method === 'POST') {
         // 新しいウォレットを作成
         $wallet = $walletService->createWallet();
         
-        // データベースに保存
-        $db->saveUserWallet($userId, $wallet);
+        // データベースに保存（利用可能な場合）
+        if ($db !== null) {
+            $db->saveUserWallet($userId, $wallet);
+        }
         
         // 1 XYMを送信
         $sent = $walletService->sendInitialXym($wallet['address']);
@@ -78,7 +86,10 @@ if ($request_uri === '/wallet/create' && $request_method === 'POST') {
 if (preg_match('/^\/wallet\/(\d+)$/', $request_uri, $matches) && $request_method === 'GET') {
     $userId = $matches[1];
     
-    $wallet = $db->getUserWallet($userId, false);
+    $wallet = null;
+    if ($db !== null) {
+        $wallet = $db->getUserWallet($userId, false);
+    }
     
     if ($wallet) {
         echo json_encode([
@@ -99,7 +110,10 @@ if (preg_match('/^\/wallet\/(\d+)$/', $request_uri, $matches) && $request_method
 if (preg_match('/^\/wallet\/(\d+)\/export$/', $request_uri, $matches) && $request_method === 'GET') {
     $userId = $matches[1];
     
-    $wallet = $db->getUserWallet($userId, true);
+    $wallet = null;
+    if ($db !== null) {
+        $wallet = $db->getUserWallet($userId, true);
+    }
     
     if ($wallet) {
         echo json_encode([

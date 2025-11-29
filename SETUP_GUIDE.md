@@ -12,7 +12,10 @@
 秘密鍵: 0C0F96FA06CE7C584943980584CF635C82A6DBDE4096382EEFC72A1795B0B274
 ```
 
-**残高: 0 XYM** ⚠️ XYMを入金する必要があります
+**残高を確認:**
+```bash
+node symbol-helper.js balance TBIBPDBSNF5Y6OBKXCNEPKPTJN5YEK3N7Q2JICA
+```
 
 #### Symbol Testnet Faucetから入金
 

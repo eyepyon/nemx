@@ -36,6 +36,9 @@ desktop.ini
 *.temp
 *.cache
 
+# テスト出力
+tests/output/
+
 # バックアップファイル
 *.bak
 *.backup

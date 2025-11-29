@@ -62,13 +62,25 @@ export SYMBOL_DEPOSIT_ADDRESS="あなたのアドレス"
 
 または `config.php` ファイルを直接編集してください。
 
-### 3. サーバーの起動
+### 3. Node.js依存関係のインストール
 
+```bash
+npm install
+```
+
+### 4. サーバーの起動
+
+**WSL環境:**
+```bash
+bash -c "php -S localhost:8000 index.php"
+```
+
+**または、直接WSLで:**
 ```bash
 php -S localhost:8000 index.php
 ```
 
-### 4. ブラウザでアクセス
+### 5. ブラウザでアクセス
 
 ```
 http://localhost:8000
@@ -166,9 +178,17 @@ symbol-wallet-service/
 │   └── index.html                # Webインターフェース
 ├── database/
 │   └── database.sqlite           # SQLiteデータベース（自動作成）
-├── config.php                    # 設定ファイル
+├── tests/
+│   ├── test-send.php             # XYM送信テスト
+│   ├── test-db.php               # データベース確認
+│   └── README.md                 # テストスクリプト説明
+├── config.php                    # 設定ファイル（.envから読み込み）
 ├── index.php                     # APIエンドポイント
+├── symbol-helper.js              # Symbol SDK v2ヘルパー
+├── .env                          # 環境変数（秘密鍵など）
+├── .env.example                  # 環境変数のサンプル
 ├── composer.json                 # Composer設定
+├── package.json                  # npm設定
 └── README.md                     # このファイル
 ```
 
@@ -219,30 +239,72 @@ CREATE TABLE user_wallets (
 - ✅ データベースに秘密鍵を保存（本番環境では暗号化推奨）
 - ✅ CORS設定済み
 
+## 開発・デバッグ
+
+### テストスクリプト
+
+`tests/`ディレクトリにテストスクリプトがあります：
+
+```bash
+# XYM送信テスト
+bash -c "php tests/test-send.php"
+
+# データベース内容確認
+bash -c "php tests/test-db.php"
+```
+
+詳細は`tests/README.md`を参照してください。
+
+### デバッグ
+
+PHPエラーログを確認：
+```bash
+tail -f /var/log/php_errors.log
+```
+
+Node.jsスクリプトを直接テスト：
+```bash
+# ウォレット作成
+node symbol-helper.js create
+
+# 残高確認
+node symbol-helper.js balance <アドレス>
+
+# XYM送信
+node symbol-helper.js send <秘密鍵> <受信者アドレス> <金額>
+```
+
 ## 推奨される改善点
 
 ### 本番環境への移行前に実装すべき項目
 
-1. **Symbol SDK の統合**: 実際のSymbol SDKを使用した鍵生成と署名
-   - 現在は簡易的な実装のため、本番環境では必須
-   
-2. **秘密鍵の暗号化**: データベース保存時の暗号化
+1. **秘密鍵の暗号化**: データベース保存時の暗号化
    - AES-256などで暗号化して保存
+   - 現在は平文で保存されています
    
-3. **認証機能**: APIアクセスの認証・認可
+2. **認証機能**: APIアクセスの認証・認可
    - JWT認証やセッション管理の実装
+   - 現在は認証なしでアクセス可能
    
-4. **トランザクション確認**: 送信後の確認処理を追加
+3. **トランザクション確認**: 送信後の確認処理を追加
    - トランザクションの承認状態を確認
+   - WebSocketでリアルタイム通知
    
-5. **残高チェック**: デポジットウォレットの残高確認
+4. **残高チェック**: デポジットウォレットの残高確認
    - 送信前に残高が十分か確認
+   - 残高不足時のエラーハンドリング
    
-6. **ログ管理**: 詳細なトランザクションログ
+5. **ログ管理**: 詳細なトランザクションログ
    - 監査用のログ記録
+   - ログローテーション
    
-7. **レート制限**: API呼び出しの制限
+6. **レート制限**: API呼び出しの制限
    - DDoS攻撃対策
+   - ユーザーごとの制限
+   
+7. **エラーハンドリング**: より詳細なエラー処理
+   - ユーザーフレンドリーなエラーメッセージ
+   - リトライ機能
 
 ## テストネット情報
 
@@ -274,19 +336,31 @@ php -S localhost:8080 index.php
 ## よくある質問
 
 **Q: 本番環境で使用できますか？**
-A: はい、実際のSymbol SDKを使用しているため使用可能です。ただし、セキュリティ対策（秘密鍵の暗号化、認証など）を追加することを強く推奨します。
+A: はい、実際のSymbol SDK v2を使用しているため使用可能です。ただし、セキュリティ対策（秘密鍵の暗号化、認証など）を追加することを強く推奨します。
 
 **Q: メインネットで使用できますか？**
-A: `config.php` のノードURLとネットワークタイプを変更すれば可能ですが、十分なテストを行ってください。
+A: `.env`ファイルのノードURLとネットワークタイプを変更すれば可能です：
+```env
+SYMBOL_NETWORK=mainnet
+SYMBOL_NODE_URL=https://symbol.services:3001
+SYMBOL_GENERATION_HASH=57F7DA205008026C776CB6AED843393F04CD458E0AA2D9F1D5F31A402072B2D6
+SYMBOL_NETWORK_TYPE=104
+```
 
 **Q: 秘密鍵は安全ですか？**
-A: 鍵生成はSymbol SDKで正しく行われていますが、データベースには平文で保存されています。本番環境では必ず暗号化してください。
+A: 鍵生成はSymbol SDK v2で正しく行われていますが、データベースには平文で保存されています。本番環境では必ず暗号化してください。
 
 **Q: Node.jsが必要なのはなぜですか？**
-A: PHPには公式のSymbol SDKがないため、Node.jsのSymbol SDKを使用しています。PHPからNode.jsスクリプトを呼び出す方式で実装しています。
+A: PHPには公式のSymbol SDKがないため、Node.jsのSymbol SDK v2を使用しています。PHPからNode.jsスクリプトを呼び出す方式で実装しています。
 
 **Q: 複数のユーザーで使用できますか？**
-A: はい。各ユーザーIDに対して1つのウォレットが作成されます。
+A: はい。各ユーザーIDに対して1つのウォレットが作成され、SQLiteデータベースに保存されます。
+
+**Q: WSL環境が必要ですか？**
+A: SQLite拡張機能が利用できれば、通常のLinux/Mac環境でも動作します。Windows環境ではWSLを推奨します。
+
+**Q: Symbol SDK v3は使えますか？**
+A: v3も動作しますが、v2の方が安定しているため、現在はv2を使用しています。
 
 ## ライセンス
 

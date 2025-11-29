@@ -68,22 +68,31 @@ class SymbolWalletService
             $config = require __DIR__ . '/../config.php';
             $amount = $config['symbol']['initial_amount']; // 1 XYM (micro XYM)
             
+            error_log("Attempting to send {$amount} micro XYM to {$recipientAddress}");
+            error_log("Using private key: " . substr($this->depositPrivateKey, 0, 10) . "...");
+            
             $result = $this->executeHelper('send', [
                 $this->depositPrivateKey,
                 $recipientAddress,
                 (string)$amount
             ]);
             
+            error_log("Send result: " . json_encode($result));
+            
             if (isset($result['success']) && $result['success']) {
                 error_log("XYM sent successfully to {$recipientAddress}. Hash: {$result['hash']}");
                 return true;
             }
             
-            error_log("Failed to send XYM: " . ($result['error'] ?? 'Unknown error'));
+            $errorMsg = isset($result['error']) ? $result['error'] : 'Unknown error';
+            $errorStack = isset($result['stack']) ? $result['stack'] : 'No stack trace';
+            error_log("Failed to send XYM: {$errorMsg}");
+            error_log("Stack trace: {$errorStack}");
             return false;
             
         } catch (\Exception $e) {
-            error_log("Error sending XYM: " . $e->getMessage());
+            error_log("Exception sending XYM: " . $e->getMessage());
+            error_log("Exception trace: " . $e->getTraceAsString());
             return false;
         }
     }
