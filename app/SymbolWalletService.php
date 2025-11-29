@@ -1,9 +1,6 @@
 <?php
 
-namespace App\Services;
-
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+namespace App;
 
 class SymbolWalletService
 {
@@ -14,10 +11,11 @@ class SymbolWalletService
     
     public function __construct()
     {
-        $this->nodeUrl = config('symbol.node_url');
-        $this->generationHash = config('symbol.generation_hash');
-        $this->networkType = config('symbol.network_type');
-        $this->depositPrivateKey = config('symbol.deposit_wallet.private_key');
+        $config = require __DIR__ . '/../config.php';
+        $this->nodeUrl = $config['symbol']['node_url'];
+        $this->generationHash = $config['symbol']['generation_hash'];
+        $this->networkType = $config['symbol']['network_type'];
+        $this->depositPrivateKey = $config['symbol']['deposit_wallet']['private_key'];
     }
 
     /**
@@ -47,7 +45,8 @@ class SymbolWalletService
     public function sendInitialXym(string $recipientAddress): bool
     {
         try {
-            $amount = config('symbol.initial_amount'); // 1 XYM
+            $config = require __DIR__ . '/../config.php';
+            $amount = $config['symbol']['initial_amount']; // 1 XYM
             
             // トランザクションを作成
             $transaction = $this->createTransferTransaction($recipientAddress, $amount);
@@ -56,20 +55,26 @@ class SymbolWalletService
             $signedTransaction = $this->signTransaction($transaction, $this->depositPrivateKey);
             
             // トランザクションをアナウンス
-            $response = Http::put("{$this->nodeUrl}/transactions", [
-                'payload' => $signedTransaction
-            ]);
+            $ch = curl_init("{$this->nodeUrl}/transactions");
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['payload' => $signedTransaction]));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
             
-            if ($response->successful()) {
-                Log::info("XYM sent successfully to {$recipientAddress}");
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode >= 200 && $httpCode < 300) {
+                error_log("XYM sent successfully to {$recipientAddress}");
                 return true;
             }
             
-            Log::error("Failed to send XYM: " . $response->body());
+            error_log("Failed to send XYM: " . $response);
             return false;
             
         } catch (\Exception $e) {
-            Log::error("Error sending XYM: " . $e->getMessage());
+            error_log("Error sending XYM: " . $e->getMessage());
             return false;
         }
     }
