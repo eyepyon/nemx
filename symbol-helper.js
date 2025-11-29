@@ -29,6 +29,36 @@ function derivePublicKey(privateKeyHex) {
 }
 
 /**
+ * Base32エンコード（Symbol用 - RFC 4648準拠）
+ */
+function base32Encode(data) {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let bits = 0;
+    let value = 0;
+    let output = '';
+    
+    for (let i = 0; i < data.length; i++) {
+        value = (value << 8) | data[i];
+        bits += 8;
+        
+        while (bits >= 5) {
+            output += alphabet[(value >>> (bits - 5)) & 31];
+            bits -= 5;
+        }
+    }
+    
+    if (bits > 0) {
+        output += alphabet[(value << (5 - bits)) & 31];
+    }
+    
+    // Symbolアドレスは39文字（パディングなし）
+    // 21バイト（1 network byte + 20 hash bytes）→ 34文字になるはず
+    // でも実際は39文字必要...チェックサムを追加
+    
+    return output;
+}
+
+/**
  * 公開鍵からアドレスを導出（Symbol testnet）
  */
 function deriveAddress(publicKeyHex) {
@@ -42,22 +72,19 @@ function deriveAddress(publicKeyHex) {
     
     // Step 3: Add network byte (testnet = 0x98)
     const networkByte = Buffer.from([0x98]);
-    const addressBytes = Buffer.concat([networkByte, ripemdHash]);
+    const versionedHash = Buffer.concat([networkByte, ripemdHash]);
     
-    // Step 4: Base32 encode
-    const base32Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-    let bits = '';
-    for (const byte of addressBytes) {
-        bits += byte.toString(2).padStart(8, '0');
-    }
+    // Step 4: Calculate checksum (first 3 bytes of SHA3-256)
+    const checksumHash = Buffer.from(sha3_256.arrayBuffer(versionedHash));
+    const checksum = checksumHash.slice(0, 3);
     
-    let address = '';
-    for (let i = 0; i < bits.length; i += 5) {
-        const chunk = bits.substr(i, 5).padEnd(5, '0');
-        address += base32Alphabet[parseInt(chunk, 2)];
-    }
+    // Step 5: Combine versioned hash + checksum
+    const addressBytes = Buffer.concat([versionedHash, checksum]);
     
-    return address.substr(0, 39); // Symbol addresses are 39 characters
+    // Step 6: Base32 encode
+    const address = base32Encode(addressBytes);
+    
+    return address;
 }
 
 /**
