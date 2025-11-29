@@ -1,2 +1,41 @@
+# 環境設定ファイル
 .env
-database/database.sqlite
+
+# データベース
+database/*.sqlite
+database/*.sqlite-journal
+database/*.db
+
+# Composer
+/vendor/
+composer.lock
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ログファイル
+*.log
+
+# 一時ファイル
+*.tmp
+*.temp
+*.cache
+
+# バックアップファイル
+*.bak
+*.backup

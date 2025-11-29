@@ -5,17 +5,44 @@ namespace App;
 class SymbolWalletService
 {
     private string $nodeUrl;
-    private string $generationHash;
-    private int $networkType;
     private string $depositPrivateKey;
+    private string $helperScript;
     
     public function __construct()
     {
         $config = require __DIR__ . '/../config.php';
         $this->nodeUrl = $config['symbol']['node_url'];
-        $this->generationHash = $config['symbol']['generation_hash'];
-        $this->networkType = $config['symbol']['network_type'];
         $this->depositPrivateKey = $config['symbol']['deposit_wallet']['private_key'];
+        $this->helperScript = __DIR__ . '/../symbol-helper.js';
+    }
+
+    /**
+     * Node.jsヘルパースクリプトを実行
+     */
+    private function executeHelper(string $command, array $args = []): array
+    {
+        $cmd = "node " . escapeshellarg($this->helperScript) . " " . escapeshellarg($command);
+        
+        foreach ($args as $arg) {
+            $cmd .= " " . escapeshellarg($arg);
+        }
+        
+        // 環境変数を設定
+        putenv("SYMBOL_NODE_URL={$this->nodeUrl}");
+        
+        $output = shell_exec($cmd . " 2>&1");
+        
+        if ($output === null) {
+            throw new \Exception("Failed to execute helper script");
+        }
+        
+        $result = json_decode(trim($output), true);
+        
+        if ($result === null) {
+            throw new \Exception("Invalid JSON response from helper: " . $output);
+        }
+        
+        return $result;
     }
 
     /**
@@ -23,19 +50,12 @@ class SymbolWalletService
      */
     public function createWallet(): array
     {
-        // ランダムな秘密鍵を生成（64文字の16進数）
-        $privateKey = bin2hex(random_bytes(32));
-        
-        // 秘密鍵から公開鍵を生成
-        $publicKey = $this->derivePublicKey($privateKey);
-        
-        // 公開鍵からアドレスを生成
-        $address = $this->deriveAddress($publicKey);
+        $result = $this->executeHelper('create');
         
         return [
-            'private_key' => $privateKey,
-            'public_key' => $publicKey,
-            'address' => $address,
+            'private_key' => $result['privateKey'],
+            'public_key' => $result['publicKey'],
+            'address' => $result['address'],
         ];
     }
 
@@ -46,31 +66,20 @@ class SymbolWalletService
     {
         try {
             $config = require __DIR__ . '/../config.php';
-            $amount = $config['symbol']['initial_amount']; // 1 XYM
+            $amount = $config['symbol']['initial_amount']; // 1 XYM (micro XYM)
             
-            // トランザクションを作成
-            $transaction = $this->createTransferTransaction($recipientAddress, $amount);
+            $result = $this->executeHelper('send', [
+                $this->depositPrivateKey,
+                $recipientAddress,
+                (string)$amount
+            ]);
             
-            // トランザクションに署名
-            $signedTransaction = $this->signTransaction($transaction, $this->depositPrivateKey);
-            
-            // トランザクションをアナウンス
-            $ch = curl_init("{$this->nodeUrl}/transactions");
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['payload' => $signedTransaction]));
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-            
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            
-            if ($httpCode >= 200 && $httpCode < 300) {
-                error_log("XYM sent successfully to {$recipientAddress}");
+            if (isset($result['success']) && $result['success']) {
+                error_log("XYM sent successfully to {$recipientAddress}. Hash: {$result['hash']}");
                 return true;
             }
             
-            error_log("Failed to send XYM: " . $response);
+            error_log("Failed to send XYM: " . ($result['error'] ?? 'Unknown error'));
             return false;
             
         } catch (\Exception $e) {
@@ -80,64 +89,49 @@ class SymbolWalletService
     }
 
     /**
-     * 秘密鍵から公開鍵を導出（簡易版）
+     * アドレスの残高を取得
      */
-    private function derivePublicKey(string $privateKey): string
+    public function getBalance(string $address): ?array
     {
-        // 実際の実装ではsymbol-sdkを使用
-        // ここでは簡易的な実装
-        return hash('sha256', $privateKey);
+        try {
+            $result = $this->executeHelper('balance', [$address]);
+            
+            if (isset($result['success']) && $result['success']) {
+                return [
+                    'balance' => $result['balance'],
+                    'balance_xym' => $result['balanceXym']
+                ];
+            }
+            
+            return null;
+            
+        } catch (\Exception $e) {
+            error_log("Error getting balance: " . $e->getMessage());
+            return null;
+        }
     }
 
     /**
-     * 公開鍵からアドレスを導出
+     * 秘密鍵からアドレスを導出
      */
-    private function deriveAddress(string $publicKey): string
+    public function deriveAddress(string $privateKey): ?array
     {
-        // 実際の実装ではsymbol-sdkを使用
-        $hash = hash('sha256', hex2bin($publicKey));
-        $ripemd = hash('ripemd160', hex2bin($hash));
-        return strtoupper(substr($ripemd, 0, 40));
-    }
-
-    /**
-     * 転送トランザクションを作成
-     */
-    private function createTransferTransaction(string $recipientAddress, int $amount): array
-    {
-        return [
-            'type' => 16724, // Transfer transaction
-            'network' => $this->networkType,
-            'version' => 1,
-            'deadline' => $this->getDeadline(),
-            'maxFee' => '100000',
-            'recipientAddress' => $recipientAddress,
-            'mosaics' => [
-                [
-                    'id' => '6BED913FA20223F8', // XYM mosaic ID
-                    'amount' => (string)$amount
-                ]
-            ],
-            'message' => 'Welcome to Symbol!'
-        ];
-    }
-
-    /**
-     * トランザクションに署名
-     */
-    private function signTransaction(array $transaction, string $privateKey): string
-    {
-        // 実際の実装ではsymbol-sdkを使用
-        // ここでは簡易的な実装
-        $payload = json_encode($transaction);
-        return bin2hex($payload);
-    }
-
-    /**
-     * デッドラインを取得（2時間後）
-     */
-    private function getDeadline(): int
-    {
-        return (time() - 1615853185) * 1000 + 7200000;
+        try {
+            $result = $this->executeHelper('derive', [$privateKey]);
+            
+            if (isset($result['success']) && $result['success']) {
+                return [
+                    'private_key' => $result['privateKey'],
+                    'public_key' => $result['publicKey'],
+                    'address' => $result['address']
+                ];
+            }
+            
+            return null;
+            
+        } catch (\Exception $e) {
+            error_log("Error deriving address: " . $e->getMessage());
+            return null;
+        }
     }
 }
