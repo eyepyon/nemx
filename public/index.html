@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symbol Wallet Service</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-right: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .wallet-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .wallet-field {
+            margin-bottom: 15px;
+        }
+        
+        .wallet-field:last-child {
+            margin-bottom: 0;
+        }
+        
+        .wallet-label {
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .wallet-value {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #333;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .private-key {
+            background: #fff3cd;
+            border-color: #ffc107;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .copy-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        
+        .copy-btn:hover {
+            background: #218838;
+        }
+        
+        .explorer-link {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        
+        .explorer-link:hover {
+            background: #0056b3;
+        }
+        
+        .show-private-key-btn {
+            background: #ffc107;
+            color: #333;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        
+        .show-private-key-btn:hover {
+            background: #e0a800;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+        }
+        
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #999;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+        
+        .close-btn:hover {
+            color: #333;
+        }
+        
+        .modal-warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #856404;
+        }
+        
+        .modal-warning strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🔐 Symbol Wallet Service</h1>
+            <p class="subtitle">Symbolブロックチェーンのウォレットを作成・管理</p>
+            
+            <div id="alert" class="hidden"></div>
+            
+            <div class="form-group">
+                <label for="userId">ユーザーID</label>
+                <input type="number" id="userId" placeholder="例: 1" min="1" value="1">
+            </div>
+            
+            <div>
+                <button class="btn" onclick="createWallet()">
+                    <span id="createBtnText">新しいウォレットを作成</span>
+                    <span id="createLoading" class="loading hidden"></span>
+                </button>
+                <button class="btn btn-secondary" onclick="getWallet()">
+                    <span id="getBtnText">ウォレット情報を取得</span>
+                    <span id="getLoading" class="loading hidden"></span>
+                </button>
+            </div>
+            
+            <div id="walletInfo" class="hidden"></div>
+        </div>
+    </div>
+
+    <!-- 秘密鍵表示モーダル -->
+    <div id="privateKeyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">🔐 秘密鍵</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-warning">
+                <strong>⚠️ 重要な警告</strong>
+                秘密鍵は絶対に他人に教えないでください。この鍵を持っている人は、あなたのウォレットを完全にコントロールできます。
+            </div>
+            <div class="wallet-field">
+                <div class="wallet-label">秘密鍵</div>
+                <div class="wallet-value private-key" id="modalPrivateKey"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showAlert(message, type = 'success') {
+            const alert = document.getElementById('alert');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alert.classList.remove('hidden');
+            
+            setTimeout(() => {
+                alert.classList.add('hidden');
+            }, 5000);
+        }
+        
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'コピー完了!';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            });
+        }
+        
+        let currentPrivateKey = null;
+        
+        function openModal() {
+            const modal = document.getElementById('privateKeyModal');
+            const modalPrivateKey = document.getElementById('modalPrivateKey');
+            
+            if (currentPrivateKey) {
+                modalPrivateKey.innerHTML = `${currentPrivateKey}<button class="copy-btn" onclick="copyToClipboard('${currentPrivateKey}', this)">コピー</button>`;
+                modal.classList.add('show');
+            }
+        }
+        
+        function closeModal() {
+            const modal = document.getElementById('privateKeyModal');
+            modal.classList.remove('show');
+        }
+        
+        // モーダル外クリックで閉じる
+        window.onclick = function(event) {
+            const modal = document.getElementById('privateKeyModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+        
+        function displayWallet(wallet, includePrivateKey = false) {
+            const walletInfo = document.getElementById('walletInfo');
+            
+            // テストネットのエクスプローラーURL
+            const explorerUrl = `https://testnet.symbol.fyi/accounts/${wallet.address}`;
+            
+            let html = '<div class="wallet-info">';
+            html += '<h3 style="margin-bottom: 15px; color: #333;">ウォレット情報</h3>';
+            
+            html += '<div class="wallet-field">';
+            html += '<div class="wallet-label">アドレス</div>';
+            html += `<div class="wallet-value">${wallet.address}`;
+            html += `<button class="copy-btn" onclick="copyToClipboard('${wallet.address}', this)">コピー</button>`;
+            html += `<a href="${explorerUrl}" target="_blank" class="explorer-link">エクスプローラーで見る</a>`;
+            html += '</div>';
+            html += '</div>';
+            
+            html += '<div class="wallet-field">';
+            html += '<div class="wallet-label">公開鍵</div>';
+            html += `<div class="wallet-value">${wallet.public_key}<button class="copy-btn" onclick="copyToClipboard('${wallet.public_key}', this)">コピー</button></div>`;
+            html += '</div>';
+            
+            if (includePrivateKey && wallet.private_key) {
+                currentPrivateKey = wallet.private_key;
+                html += '<button class="show-private-key-btn" onclick="openModal()">🔑 秘密鍵を表示</button>';
+            }
+            
+            html += '</div>';
+            
+            walletInfo.innerHTML = html;
+            walletInfo.classList.remove('hidden');
+        }
+        
+        async function createWallet() {
+            const userId = document.getElementById('userId').value;
+            
+            if (!userId) {
+                showAlert('ユーザーIDを入力してください', 'error');
+                return;
+            }
+            
+            const createBtnText = document.getElementById('createBtnText');
+            const createLoading = document.getElementById('createLoading');
+            
+            createBtnText.classList.add('hidden');
+            createLoading.classList.remove('hidden');
+            
+            try {
+                const response = await fetch('/wallet/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ user_id: parseInt(userId) })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                    
+                    // 秘密鍵を含む完全な情報を取得
+                    const exportResponse = await fetch(`/wallet/${userId}/export`);
+                    const exportData = await exportResponse.json();
+                    
+                    if (exportData.success) {
+                        displayWallet(exportData.wallet, true);
+                    } else {
+                        displayWallet(data.wallet, false);
+                    }
+                } else {
+                    showAlert(data.message, 'error');
+                }
+            } catch (error) {
+                showAlert('エラーが発生しました: ' + error.message, 'error');
+            } finally {
+                createBtnText.classList.remove('hidden');
+                createLoading.classList.add('hidden');
+            }
+        }
+        
+        async function getWallet() {
+            const userId = document.getElementById('userId').value;
+            
+            if (!userId) {
+                showAlert('ユーザーIDを入力してください', 'error');
+                return;
+            }
+            
+            const getBtnText = document.getElementById('getBtnText');
+            const getLoading = document.getElementById('getLoading');
+            
+            getBtnText.classList.add('hidden');
+            getLoading.classList.remove('hidden');
+            
+            try {
+                const response = await fetch(`/wallet/${userId}/export`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayWallet(data.wallet, true);
+                    showAlert('ウォレット情報を取得しました', 'success');
+                } else {
+                    showAlert(data.message, 'error');
+                }
+            } catch (error) {
+                showAlert('エラーが発生しました: ' + error.message, 'error');
+            } finally {
+                getBtnText.classList.remove('hidden');
+                getLoading.classList.add('hidden');
+            }
+        }
+        
+        // Enterキーでウォレット作成
+        document.getElementById('userId').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                createWallet();
+            }
+        });
+    </script>
+</body>
+</html>

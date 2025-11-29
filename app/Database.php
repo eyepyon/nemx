@@ -54,10 +54,14 @@ class Database
         ]);
     }
     
-    public function getUserWallet(int $userId): ?array
+    public function getUserWallet(int $userId, bool $includePrivateKey = false): ?array
     {
+        $fields = $includePrivateKey 
+            ? "address, public_key, private_key" 
+            : "address, public_key";
+            
         $stmt = $this->pdo->prepare("
-            SELECT address, public_key FROM user_wallets WHERE user_id = :user_id
+            SELECT {$fields} FROM user_wallets WHERE user_id = :user_id
         ");
         
         $stmt->execute(['user_id' => $userId]);

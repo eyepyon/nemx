@@ -9,10 +9,17 @@ use App\Database;
 $db = new Database();
 
 // ルーティング
-$request_uri = $_SERVER['REQUEST_URI'];
+$request_uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $request_method = $_SERVER['REQUEST_METHOD'];
 
-header('Content-Type: application/json');
+// 静的ファイルの配信
+if ($request_uri === '/' || $request_uri === '/index.html') {
+    header('Content-Type: text/html; charset=utf-8');
+    readfile(__DIR__ . '/public/index.html');
+    exit;
+}
+
+header('Content-Type: application/json; charset=utf-8');
 
 // CORS設定
 header('Access-Control-Allow-Origin: *');
@@ -67,11 +74,11 @@ if ($request_uri === '/wallet/create' && $request_method === 'POST') {
     exit;
 }
 
-// ルート: ウォレット情報取得
+// ルート: ウォレット情報取得（公開情報のみ）
 if (preg_match('/^\/wallet\/(\d+)$/', $request_uri, $matches) && $request_method === 'GET') {
     $userId = $matches[1];
     
-    $wallet = $db->getUserWallet($userId);
+    $wallet = $db->getUserWallet($userId, false);
     
     if ($wallet) {
         echo json_encode([
@@ -79,6 +86,28 @@ if (preg_match('/^\/wallet\/(\d+)$/', $request_uri, $matches) && $request_method
             'wallet' => [
                 'address' => $wallet['address'],
                 'public_key' => $wallet['public_key']
+            ]
+        ]);
+    } else {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => 'ウォレットが見つかりません']);
+    }
+    exit;
+}
+
+// ルート: ウォレット情報取得（秘密鍵を含む）
+if (preg_match('/^\/wallet\/(\d+)\/export$/', $request_uri, $matches) && $request_method === 'GET') {
+    $userId = $matches[1];
+    
+    $wallet = $db->getUserWallet($userId, true);
+    
+    if ($wallet) {
+        echo json_encode([
+            'success' => true,
+            'wallet' => [
+                'address' => $wallet['address'],
+                'public_key' => $wallet['public_key'],
+                'private_key' => $wallet['private_key']
             ]
         ]);
     } else {

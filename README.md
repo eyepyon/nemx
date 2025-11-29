@@ -63,7 +63,7 @@ curl -X POST http://localhost:8000/wallet/create \
 }
 ```
 
-### 2. ウォレット情報取得
+### 2. ウォレット情報取得（公開情報のみ）
 
 ユーザーのウォレット情報を取得：
 
@@ -78,6 +78,26 @@ curl http://localhost:8000/wallet/1
   "wallet": {
     "address": "TXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
     "public_key": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+  }
+}
+```
+
+### 3. ウォレットのエクスポート（秘密鍵を含む）
+
+⚠️ **注意**: 秘密鍵は非常に重要な情報です。安全に管理してください。
+
+```bash
+curl http://localhost:8000/wallet/1/export
+```
+
+レスポンス例：
+```json
+{
+  "success": true,
+  "wallet": {
+    "address": "TXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    "public_key": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    "private_key": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
   }
 }
 ```
